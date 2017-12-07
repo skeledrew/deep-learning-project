@@ -1,0 +1,69 @@
+# Original: https://github.com/tflearn/tflearn/blob/master/examples/images/dnn.py
+---
+dataset:
+  source: mnist
+  one_hot: true
+net_arch:
+  - # layer 1
+    - input_data
+    - shape:
+      - null
+      - 784
+      name: input
+  - # layer 2
+    - fully_connected
+    - # args
+      - 64
+    - # kwargs
+      activation: tanh
+      regularizer: L2
+      weight_decay: 0.001
+  - # layer 3
+    - dropout
+    - - 0.8
+  -
+    - fully_connected
+    -
+      - 64
+    - activation: tanh
+      regularizer: L2
+      weight_decay: 0.001
+  -
+    - dropout
+    -
+      - 0.8
+  -
+    - fully_connected
+    -
+      - 10
+    - activation: softmax
+      regularizer: L2
+      weight_decay: 0.001
+  -
+    - custom_layer
+    -
+      - tfl_sgd
+    - <<by_ref>>: sgd
+      learning_rate: 0.1
+      lr_decay: 0.96
+      decay_step: 1000
+  -
+    - custom_layer
+    -
+      - tfl_metrics_top_k
+    - <<by_ref>>: top_k
+      k: 3
+  - # final layer
+    - regression
+    - optimizer: <<by_ref>>://sgd
+      metric: <<by_ref>>://top_k
+      loss: categorical_crossentropy
+model:
+  n_epoch: 3  # was 20
+  show_metric: true
+  run_id: dense_model
+options:
+  model_save: models/multi_percep.model
+  callbacks:
+    on_epoch_begin:
+      - view_filters  # NB: actually calls `cb_view_filters`

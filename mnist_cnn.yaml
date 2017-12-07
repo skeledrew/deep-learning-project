@@ -1,0 +1,29 @@
+---
+dataset:
+  'name': 'mnist'
+  'one_hot': true
+  'reshape': [-1, 28, 28, 1]
+  'preprocess': null
+  'augment': null
+net_arch:  # network architecture (layers)
+  - ['input_data', {'shape': [null, 28, 28, 1], 'name': 'input'}]
+  - ['conv_2d', [32, 3], {'activation': 'relu', 'regularizer': 'L2'}]
+  - ['max_pool_2d', [2]]
+  - ['local_response_normalization']
+  - ['conv_2d', [64, 3], {'activation': 'relu', 'regularizer': 'L2'}]
+  - ['max_pool_2d', [2]]
+  - ['local_response_normalization']
+  - ['fully_connected', [128], {'activation': 'tanh'}]
+  - ['dropout', [0.8]]
+  - ['fully_connected', [256], {'activation': 'tanh'}]
+  - ['dropout', [0.8]]
+  - ['fully_connected', [10], {'activation': 'softmax'}]
+  - ['regression', {'optimizer': 'adam', 'learning_rate': 0.01, 'loss': 'categorical_crossentropy', 'name': 'target'}]
+model:
+  'n_epoch': 20
+  'snapshot_step': 100
+  'show_metric': true
+  'run_id': 'convnet_mnist'
+options:
+  'auto_name': null
+  'model_save': 'models/mnist_cnn.model'

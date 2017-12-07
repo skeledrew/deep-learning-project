@@ -1,0 +1,33 @@
+---
+dataset:
+  'source': 'cifar10'
+  'shuffle': true
+  'to_categorical': true
+net_arch:  # network architecture (layers)
+  - ['input_data', {'shape': [null, 32, 32, 3], 'name': 'input'}]
+  - ['conv_2d', [192, 5], {'activation': 'relu'}]
+  - ['conv_2d', [160, 1], {'activation': 'relu'}]
+  - ['conv_2d', [96, 1], {'activation': 'relu'}]
+  - ['max_pool_2d', [3], {'strides': 2}]
+  - ['dropout', [0.5]]
+  - ['conv_2d', [192, 5], {'activation': 'relu'}]
+  - ['conv_2d', [192, 1], {'activation': 'relu'}]
+  - ['conv_2d', [192, 1], {'activation': 'relu'}]
+  - ['avg_pool_2d', [3], {'strides': 2}]
+  - ['dropout', [0.5]]
+  - ['conv_2d', [192, 3], {'activation': 'relu'}]
+  - ['conv_2d', [192, 1], {'activation': 'relu'}]
+  - ['conv_2d', [10, 1], {'activation': 'relu'}]
+  - ['avg_pool_2d', [8]]
+  - ['flatten']
+  - ['regression', {'optimizer': 'adam', 'learning_rate': 0.001, 'loss': 'softmax_categorical_crossentropy'}]
+model:
+  'n_epoch': 50
+  'shuffle': true
+  'snapshot_step': 100
+  'show_metric': true
+  'batch_size': 128
+  'run_id': 'cifar10_net_in_net'
+options:
+  'auto_name': null
+  'model_save': 'models/cifar10_net_in_net.model'
