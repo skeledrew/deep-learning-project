@@ -64,3 +64,6 @@ model:
   run_id: dense_model
 options:
   model_save: models/multi_percep.model
+  callbacks:
+    on_epoch_begin:
+      - view_filters  # NB: actually calls `cb_view_filters`

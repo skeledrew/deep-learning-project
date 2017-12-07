@@ -7,7 +7,7 @@ dataset:
   'augment': null
 net_arch:  # network architecture (layers)
   - ['input_data', {'shape': [null, 28, 28, 1], 'name': 'input'}]
-  - ['conv_2d', [32, 3], {'activation': 'relu', 'regularizer': 'L2', 'reuse': true}]
+  - ['conv_2d', [32, 3], {'activation': 'relu', 'regularizer': 'L2'}]
   #- ['custom_layer', ['view_filters']]
   - ['max_pool_2d', [2]]
   - ['local_response_normalization']

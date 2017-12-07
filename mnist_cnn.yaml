@@ -1,6 +1,6 @@
 ---
 dataset:
-  'name': 'mnist'
+  'source': 'mnist'
   'one_hot': true
   'reshape': [-1, 28, 28, 1]
   'preprocess': null

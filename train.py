@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 '''
-
+Neural net setup and training.
 '''
 
 from os.path import exists
@@ -19,11 +19,11 @@ class DataSet():
 
     def load_data(self, ds):
         _ds = None
-        if ds['name'] == 'mnist':
+        if ds['source'] == 'mnist':
             from tflearn.datasets import mnist as _ds
             self._X, self._Y, self._test_X, self._test_Y = _ds.load_data(one_hot=ds.get('one_hot', False))
 
-        if ds['name'] == 'cifar10':
+        if ds['source'] == 'cifar10':
             from tflearn.datasets import cifar10 as _ds
             (self._X, self._Y), (self._test_X, self._test_Y) = _ds.load_data(one_hot=ds.get('one_hot', False))
         from tflearn.data_utils import shuffle, to_categorical
@@ -64,13 +64,16 @@ class DataSet():
         return True
 
 
-def make_net(arch, mods=None, preprocess=None, augument=None):
+def make_net(arch, mods=None, preprocess=None, augment=None):
     ''' Create DNN architecture.
     TODO: implement non-seq net capability
+      - accept primitive as 1st arg
+    NOTE: arch and layer modified by ref
     '''
     if not mods: raise ValueError('No modules given.')
     net = None
-    colls = [list, dict, tuple]
+    colls = [list, dict, tuple, set]
+    by_ref = {}  # holds intermediate objects for passing in custom_layer
 
     for idx, layer in enumerate(arch):
         func_name = layer.pop(0)
@@ -86,6 +89,7 @@ def make_net(arch, mods=None, preprocess=None, augument=None):
 
         if len(layer) in [1, 2]:
             # args and kwargs grouped separately
+            if not type(layer[0]) in colls: layer[0] = [layer[0]]
             args = layer[0] if type(layer[0]) in [list, tuple] else []
             kwargs = layer[-1] if isinstance(layer[-1], dict) else {}
 
@@ -95,7 +99,22 @@ def make_net(arch, mods=None, preprocess=None, augument=None):
             args = [arg for arg in layer if not type(arg) in colls]
             kwargs = {key: value for key, value in zip()}
         if idx > 0: args.insert(0, net)
-        #if func_name == 'custom_layer': args[1] = getattr(custom, args[1])
+        if func_name == 'input_data':
+            kwargs['data_preprocessing'] = preprocess
+            kwargs['data_augmentation'] = augment
+        if func_name == 'custom_layer':
+            # setup referencing
+            args[1] = getattr(custom, args[1])
+            kwargs['<<by_ref>>'] = by_ref
+
+        else:
+            # handle any by_ref substitutions
+            for idx, arg in enumerate(args):
+                if isinstance(arg, str) and arg.startswith('<<by_ref>>://'):
+                    args[idx] = by_ref[arg.split('://')[1]]
+            for key, val in zip(kwargs.keys(), kwargs.values()):
+                if isinstance(val, str) and val.startswith('<<by_ref>>://'):
+                    kwargs[key] = by_ref[val.split('://')[1]]
         net = func(**kwargs) if not args else func(*args) if not kwargs else func(*args, **kwargs)
     return net
 
@@ -112,8 +131,8 @@ def train(**kwargs):
     except Exception as e:
         print('Failed to load dataset: %s' % repr(e))
         pdb.post_mortem()
+        sys.exit()
     net = None
-    mcb = custom.MultiCallback()
 
     try:
         net = make_net(kwargs.get('net_arch', []), mods=kwargs.get('mods', []))
@@ -121,8 +140,11 @@ def train(**kwargs):
     except Exception as e:
         print('NN creation failed: %s' % repr(e))
         pdb.post_mortem()
+        sys.exit()
     model = tfl.DNN(net, tensorboard_verbose=kwargs.get('tb_verbose', 0))
-    model.fit({'input': ds.X}, {'target': ds.Y}, validation_set=({'input': ds.test_X}, {'target': ds.test_Y}), callbacks=mcb, **rest)
+    callbacks = kwargs.get('callbacks', False)
+    mcb = custom.MultiCallback(model, callbacks=callbacks)
+    model.fit(ds.X, ds.Y, validation_set=(ds.test_X, ds.test_Y), callbacks=mcb if callbacks else False, **rest)
     return model
 
 def main(config=None):
@@ -132,8 +154,8 @@ def main(config=None):
     if (not config and exists(cfg_default)) or exists(config): config = load_yaml(config or cfg_default)
     tfl_layers = [getattr(tfl.layers, mod) for mod in tfl.layers.__dict__ if mod in ['core', 'conv', 'estimator', 'normalization', 'recurrent', 'merge_ops']]
     mods = tfl_layers
-    model = train(net_arch=config['net_arch'], mods=mods, tb_verbose=3, dataset_p=config['dataset'], model_p=config['model'])
-    if 'model_save' in config['options']: model.save(config['options']['model_save'])
+    model = train(net_arch=config['net_arch'], mods=mods, tb_verbose=3, dataset_p=config['dataset'], model_p=config['model'], callbacks=config['options'].get('callbacks', []))
+    if config['options'].get('model_save', False): model.save(ensure_dirs(config['options']['model_save']))
 
 if __name__ == '__main__':
     cfg = sys.argv[1] if len(sys.argv) > 1 else None
